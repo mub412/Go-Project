@@ -7,58 +7,76 @@ import (
 )
 
 type Product struct {
-	ID          int     `json:"id"`
+	ID          int     `json:""`
 	Title       string  `json:"title"`
-	Description string  `json:"description"`
+	Description string  `json:"description "`
 	Price       float64 `json:"price"`
 	ImgUrl      string  `json:"imgUrl"`
 }
 
 var productList []Product
 
-func getProducts(w http.ResponseWriter, r *http.Request) {
-	handleCors(w)
-	sendData(w, productList, 200)
+func helloHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Hello")
 }
 
-func createProducts(w http.ResponseWriter, r *http.Request) {
-	handleCors(w)
-	handlePreflightReq(w, r)
+func aboutHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "I am Mohi Uddin, I'm a new go learner")
+}
+func getProducts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != "GET" {
+		http.Error(w, "Please give me GET request", 400)
+		return
+	}
+	encoder := json.NewEncoder(w)
+	encoder.Encode(productList)
+
+}
+
+func createProduct(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(200)
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Please give me POST request", 400)
+		return
+	}
 	var newProduct Product
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&newProduct)
+
 	if err != nil {
 		fmt.Println(err)
-		http.Error(w, "Please give me valid JSON", 400)
-		return
+		http.Error(w, "Please give me valid json", 400)
 	}
+
 	newProduct.ID = len(productList) + 1
+
 	productList = append(productList, newProduct)
-	sendData(w, newProduct, 201)
-}
-func handleCors(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	w.Header().Set("Content-Type", "application/json")
-}
-func handlePreflightReq(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "OPTIONS" {
-		w.WriteHeader(200)
-	}
-}
-func sendData(w http.ResponseWriter, data interface{}, statusCode int) {
-	w.WriteHeader(statusCode)
+
+	w.WriteHeader(201)
 	encoder := json.NewEncoder(w)
-	encoder.Encode(data)
+	encoder.Encode(newProduct)
+
 }
+
 func main() {
 	mux := http.NewServeMux()
-	mux.Handle("GET /products", http.HandlerFunc(getProducts))
-	mux.Handle("POST /create", http.HandlerFunc(createProducts))
-	mux.Handle("OPTIONS /create", http.HandlerFunc(createProducts))
-
-	fmt.Println("Server running on : 8080")
+	mux.HandleFunc("/hello", helloHandler)
+	mux.HandleFunc("/about", aboutHandler)
+	mux.HandleFunc("/products", getProducts)
+	mux.HandleFunc("/create", createProduct)
+	fmt.Println("Server running on :8080")
 	err := http.ListenAndServe(":8080", mux)
 	if err != nil {
 		fmt.Println("Error starting the server", err)
@@ -101,4 +119,3 @@ func init() {
 	productList = append(productList, prd4)
 
 }
-
